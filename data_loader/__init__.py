@@ -1,7 +1,9 @@
 from .cityscapes import CitySegmentation
+from .water import WaterSegmentation
 
 datasets = {
     'citys': CitySegmentation,
+    'water': WaterSegmentation,
 }
 
 
