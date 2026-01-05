@@ -48,12 +48,25 @@ with torch.no_grad():
         out = model(tensor)[0]          # out shape: [19, H, W]
         pred = out.argmax(1).squeeze(0).cpu().numpy()  # [H, W] 0~18
 
-        # 上色
-        color_mask = get_color_pallete(pred, 'citys')   # PIL Image
-        color_mask = cv2.cvtColor(np.array(color_mask), cv2.COLOR_RGB2BGR)
+        show_color_mask = True # 显示灰度还是彩色结果
+        if not show_color_mask:
+            # 上色
+            color_mask = get_color_pallete(pred, 'citys')   # PIL Image
+            color_mask = cv2.cvtColor(np.array(color_mask), cv2.COLOR_RGB2BGR)
 
-        # 原图与掩码同屏显示（可自由叠加/融合）
-        color_mask = cv2.resize(color_mask, (frame.shape[1], frame.shape[0]))
+            # 原图与掩码同屏显示（可自由叠加/融合）
+            color_mask = cv2.resize(color_mask, (frame.shape[1], frame.shape[0]))
+        else:
+            # 1. 先拿到调色板图像（P 模式）
+            color_pal = get_color_pallete(pred, 'citys')   # 仍是 P 模式
+            # 2. 转 RGB 三通道
+            color_pal = color_pal.convert('RGB')           # 现在每个像素是 (R,G,B)
+            # 3. 再转 numpy + BGR
+            color_mask = cv2.cvtColor(np.array(color_pal), cv2.COLOR_RGB2BGR)
+            # 4. resize 到原图大小
+            color_mask = cv2.resize(color_mask,
+                                    (frame.shape[1], frame.shape[0]),
+                                    interpolation=cv2.INTER_NEAREST)
 
         # 计算 FPS
         fps = 0.9 * fps + 0.1 * (1 / (time.time() - t0))
