@@ -5,7 +5,7 @@ from models.fast_scnn import get_fast_scnn      # 作者目录结构
 import numpy as np
 
 
-CAMERA_IDX = 3 # 0 为笔记本自带摄像头
+CAMERA_IDX = 0 # 0 为笔记本自带摄像头
 
 
 # ---- 1. 加载模型（只跑一次） ----
