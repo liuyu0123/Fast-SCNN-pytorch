@@ -116,6 +116,7 @@ weights/
 
 # result
 test_result/
+test_result*
 
 
 *copy
