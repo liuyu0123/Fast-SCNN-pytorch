@@ -6,11 +6,9 @@ import numpy as np
 __all__ = ['SegmentationMetric', 'batch_pix_accuracy', 'batch_intersection_union',
            'pixelAccuracy', 'intersectionAndUnion', 'hist_info', 'compute_score']
 
-"""Evaluation Metrics for Semantic Segmentation"""
-
 
 class SegmentationMetric(object):
-    """Computes pixAcc and mIoU metric scores
+    """Computes pixAcc, mIoU, Precision, Recall, and F1 metric scores
     """
 
     def __init__(self, nclass):
@@ -53,10 +51,81 @@ class SegmentationMetric(object):
         mIoU = IoU.mean()
         return pixAcc, mIoU
 
+    def get_full_metrics(self):
+        """Gets comprehensive metrics including Precision, Recall, F1
+        
+        Returns
+        -------
+        metrics : dict
+            包含 pixAcc, mIoU, precision, recall, f1
+        """
+        # 从混淆矩阵计算各项指标
+        hist = self.confusion_matrix
+        
+        # 计算每个类别的 precision, recall, f1
+        # Precision = TP / (TP + FP) = 对角线 / 列和
+        # Recall = TP / (TP + FN) = 对角线 / 行和
+        
+        # 防止除零
+        eps = np.spacing(1)
+        
+        # 计算每个类别的指标
+        tp = np.diag(hist)  # True Positives (对角线)
+        
+        # Precision per class: TP / (TP + FP) = diag / col_sum
+        col_sum = hist.sum(axis=0)
+        precision_per_class = tp / (col_sum + eps)
+        
+        # Recall per class: TP / (TP + FN) = diag / row_sum  
+        row_sum = hist.sum(axis=1)
+        recall_per_class = tp / (row_sum + eps)
+        
+        # F1 per class
+        f1_per_class = 2 * precision_per_class * recall_per_class / (precision_per_class + recall_per_class + eps)
+        
+        # IoU per class (和原来的 mIoU 计算一致)
+        union = row_sum + col_sum - tp
+        iou_per_class = tp / (union + eps)
+        
+        # 计算宏平均 (macro-average) - 对所有类别平均，包括背景
+        # 通常语义分割中，背景类(0)也参与计算，但如果想排除背景，可以用 [1:]
+        precision_macro = np.nanmean(precision_per_class)
+        recall_macro = np.nanmean(recall_per_class)
+        f1_macro = np.nanmean(f1_per_class)
+        mIoU = np.nanmean(iou_per_class)
+        
+        # 计算微平均 (micro-average) - 基于总体 TP/FP/FN
+        tp_total = tp.sum()
+        precision_micro = tp_total / (col_sum.sum() + eps)
+        recall_micro = tp_total / (row_sum.sum() + eps)
+        f1_micro = 2 * precision_micro * recall_micro / (precision_micro + recall_micro + eps)
+        
+        # 像素准确率
+        pixAcc = 1.0 * self.total_correct / (self.total_label + eps)
+        
+        return {
+            'pixAcc': pixAcc,
+            'mIoU': mIoU,
+            'precision': precision_macro,      # 宏平均精度
+            'recall': recall_macro,            # 宏平均召回
+            'f1': f1_macro,                    # 宏平均 F1
+            'precision_micro': precision_micro,  # 微平均精度
+            'recall_micro': recall_micro,        # 微平均召回
+            'f1_micro': f1_micro,                # 微平均 F1
+            'precision_per_class': precision_per_class.tolist(),
+            'recall_per_class': recall_per_class.tolist(),
+            'f1_per_class': f1_per_class.tolist(),
+            'iou_per_class': iou_per_class.tolist(),
+            'confusion_matrix': hist.tolist()
+        }
+
     def evaluate_worker(self, pred, label):
-        correct, labeled = batch_pix_accuracy(pred, label)
+        # 更新混淆矩阵
+        hist, labeled, correct = hist_info(pred, label, self.nclass)
         inter, union = batch_intersection_union(pred, label, self.nclass)
+        
         with self.lock:
+            self.confusion_matrix += hist
             self.total_correct += correct
             self.total_label += labeled
             self.total_inter += inter
@@ -68,6 +137,8 @@ class SegmentationMetric(object):
         self.total_union = 0
         self.total_correct = 0
         self.total_label = 0
+        # 新增：混淆矩阵，用于计算 precision/recall/f1
+        self.confusion_matrix = np.zeros((self.nclass, self.nclass), dtype=np.int64)
 
 
 def batch_pix_accuracy(predict, target):
@@ -108,14 +179,7 @@ def batch_intersection_union(predict, target, nclass):
 def pixelAccuracy(imPred, imLab):
     """
     This function takes the prediction and label of a single image, returns pixel-wise accuracy
-    To compute over many images do:
-    for i = range(Nimages):
-         (pixel_accuracy[i], pixel_correct[i], pixel_labeled[i]) = \
-            pixelAccuracy(imPred[i], imLab[i])
-    mean_pixel_accuracy = 1.0 * np.sum(pixel_correct) / (np.spacing(1) + np.sum(pixel_labeled))
     """
-    # Remove classes from unlabeled pixels in gt image.
-    # We should not penalize detections in unlabeled portions of the image.
     pixel_labeled = np.sum(imLab >= 0)
     pixel_correct = np.sum((imPred == imLab) * (imLab >= 0))
     pixel_accuracy = 1.0 * pixel_correct / pixel_labeled
@@ -126,20 +190,12 @@ def intersectionAndUnion(imPred, imLab, numClass):
     """
     This function takes the prediction and label of a single image,
     returns intersection and union areas for each class
-    To compute over many images do:
-    for i in range(Nimages):
-        (area_intersection[:,i], area_union[:,i]) = intersectionAndUnion(imPred[i], imLab[i])
-    IoU = 1.0 * np.sum(area_intersection, axis=1) / np.sum(np.spacing(1)+area_union, axis=1)
     """
-    # Remove classes from unlabeled pixels in gt image.
-    # We should not penalize detections in unlabeled portions of the image.
     imPred = imPred * (imLab >= 0)
 
-    # Compute area intersection:
     intersection = imPred * (imPred == imLab)
     (area_intersection, _) = np.histogram(intersection, bins=numClass, range=(1, numClass))
 
-    # Compute area union:
     (area_pred, _) = np.histogram(imPred, bins=numClass, range=(1, numClass))
     (area_lab, _) = np.histogram(imLab, bins=numClass, range=(1, numClass))
     area_union = area_pred + area_lab - area_intersection
@@ -147,19 +203,19 @@ def intersectionAndUnion(imPred, imLab, numClass):
 
 
 def hist_info(pred, label, num_cls):
+    """计算混淆矩阵"""
     assert pred.shape == label.shape
     k = (label >= 0) & (label < num_cls)
     labeled = np.sum(k)
     correct = np.sum((pred[k] == label[k]))
 
+    # 构建混淆矩阵: hist[i, j] 表示真实为i预测为j的像素数
     return np.bincount(num_cls * label[k].astype(int) + pred[k], minlength=num_cls ** 2).reshape(num_cls,
                                                                                                  num_cls), labeled, correct
 
 
 def compute_score(hist, correct, labeled):
     iu = np.diag(hist) / (hist.sum(1) + hist.sum(0) - np.diag(hist))
-    # print('right')
-    # print(iu)
     mean_IU = np.nanmean(iu)
     mean_IU_no_back = np.nanmean(iu[1:])
     freq = hist.sum(1) / hist.sum()
