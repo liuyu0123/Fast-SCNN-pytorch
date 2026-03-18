@@ -28,7 +28,8 @@ python eval_water.py `
     --dataset water `
     --num-classes 2 `
     --save-mask `
-    --save-overlay
+    --save-overlay `
+    --output weights/test_result.csv
 #2. 无标签测试（仅推理）
 python eval_water.py `
     --model-path D:\Files\GitProject\Fast-SCNN-pytorch-LY\weights\fast_scnn_water_best_model.pth `
