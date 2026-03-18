@@ -1,9 +1,11 @@
 from .cityscapes import CitySegmentation
 from .water import WaterSegmentation
+from .water_val import CustomSegmentationDataset
 
 datasets = {
     'citys': CitySegmentation,
     'water': WaterSegmentation,
+    'water_val': CustomSegmentationDataset,
 }
 
 

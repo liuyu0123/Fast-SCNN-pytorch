@@ -2,6 +2,18 @@
 python train.py --model fast_scnn --dataset citys
 # 训练自己的数据集
 python train.py --model fast_scnn --dataset water
+# 训练模型（水域分割，train和val分离）
+python train_water.py `
+    --model fast_scnn `
+    --dataset water `
+    --images D:\Files\Data\IRWSB\train\images `
+    --masks D:\Files\Data\IRWSB\train\masks_Ids `
+    --val-images D:\Files\Data\IRWSB\val\images `
+    --val-masks D:\Files\Data\IRWSB\val\masks_Ids `
+    --num-classes 2 `
+    --batch-size 4 `
+    --epochs 5 `
+    --lr 0.01
 
 # 测试
 python eval.py
