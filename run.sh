@@ -19,6 +19,23 @@ python train_water.py `
 python eval.py
 # 测试自己的数据集(需要修改下models\fast_scnn.py)，训练完成后生成：weights\fast_scnn_water.pth
 python eval.py --model fast_scnn --dataset water
+# 测试（水域分割，指定test路径并记录预测结果csv）
+#1. 带标签测试（计算指标）✅
+python eval_water.py `
+    --model-path D:\Files\GitProject\Fast-SCNN-pytorch-LY\weights\fast_scnn_water_best_model.pth `
+    --test-images D:\Files\Data\IRWSB\test\images `
+    --test-masks D:\Files\Data\IRWSB\test\masks_Ids `
+    --dataset water `
+    --num-classes 2 `
+    --save-mask `
+    --save-overlay
+#2. 无标签测试（仅推理）
+python eval_water.py `
+    --model-path D:\Files\GitProject\Fast-SCNN-pytorch-LY\weights\fast_scnn_water_best_model.pth `
+    --test-images D:\Files\Data\IRWSB\test\images `
+    --dataset water `
+    --num-classes 2 `
+    --save-mask
 
 # 演示，处理单张图片
 python demo.py --model fast_scnn --input-pic './png/berlin_000000_000019_leftImg8bit.png'
