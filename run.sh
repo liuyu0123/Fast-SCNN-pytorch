@@ -15,6 +15,21 @@ python train_water.py `
     --epochs 5 `
     --lr 0.01
 
+# 训练模型(pro)
+python train_water_val_pro.py `
+    --images D:\Files\Data\IRWSB\train\images `
+    --masks D:\Files\Data\IRWSB\train\masks_Ids `
+    --val-images D:\Files\Data\IRWSB\val\images `
+    --val-masks D:\Files\Data\IRWSB\val\masks_Ids `
+    --epochs 5 `
+    --batch-size 4 `
+    --learning-rate 5e-4 `
+    --model-dir checkpoints/experiment1 `
+    --log-dir logs/experiment1 `
+    --model-name experiment1 `
+    --log-name experiment1 `
+    --save-interval 0
+
 # 测试
 python eval.py
 # 测试自己的数据集(需要修改下models\fast_scnn.py)，训练完成后生成：weights\fast_scnn_water.pth

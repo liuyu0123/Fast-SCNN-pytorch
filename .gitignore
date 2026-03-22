@@ -120,3 +120,5 @@ test_result*
 
 
 *copy
+checkpoints/
+logs/
