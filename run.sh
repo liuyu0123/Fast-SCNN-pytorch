@@ -65,3 +65,30 @@ python demo.py --model fast_scnn --dataset water --input-pic "D:\Files\Data\USVI
 python demo.py --model fast_scnn --dataset water --input-pic "D:\Files\Data\StereoUSV\dataset1\left\stereo_20260108_110215\000002.png"
 # 演示，处理视频（无法运行）
 python demo.py --model fast_scnn --input-pic "D:\Files\Data\StereoCamera\ImageStereo\RiverVideo\past\stereo_vfr_20251227_121002.mp4"
+
+
+# 模型推理pro（保存红色mask蒙版和csv评价指标）
+################################### 单张图片推理（无真值，只保存叠加图） ###################################
+python eval_water_pro.py `
+    --input test.jpg `
+    --model-path "F:\AAA\8_fastscnn_best\experiment1\experiment1_last.pth" `
+    --output ./test_results_pro/
+
+# 文件夹批量评估（有真值，保存叠加图+CSV报告）
+python eval_water_pro.py `
+    --input "D:\Files\Data\IRWSB\analyse\images" `
+    --mask "D:\Files\Data\IRWSB\analyse\masks_Ids" `
+    --model-path "F:\AAA\8_fastscnn_best\experiment1\experiment1_last.pth" `
+    --output ./test_results_pro/
+
+# 文件夹批量推理（无真值，只保存叠加图）
+python eval_water_pro.py `
+    --input "D:\Files\Data\IRWSB\analyse\images" `
+    --model-path "F:\AAA\8_fastscnn_best\experiment1\experiment1_last.pth" `
+    --output ./test_results_pro/
+
+# 仅打印终端结果（不保存文件）
+python eval_water_pro.py `
+    --input "D:\Files\Data\IRWSB\analyse\images" `
+    --mask "D:\Files\Data\IRWSB\analyse\masks_Ids" `
+    --model-path "F:\AAA\8_fastscnn_best\experiment1\experiment1_last.pth" `
