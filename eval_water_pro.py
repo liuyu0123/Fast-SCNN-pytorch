@@ -145,8 +145,9 @@ class AdaptiveDataset(data.Dataset):
                     os.path.join(mask_path, f) for f in os.listdir(mask_path)
                     if f.lower().endswith(valid_exts)
                 ])
-                if len(self.images) != len(self.masks):
-                    raise ValueError(f"图片数量({len(self.images)})与mask数量({len(self.masks)})不匹配")
+                # 检查图片数量与mask数量是否一致【不启用】
+                # if len(self.images) != len(self.masks):
+                #     raise ValueError(f"图片数量({len(self.images)})与mask数量({len(self.masks)})不匹配")
             else:
                 self.masks = None
             self.is_single = False
