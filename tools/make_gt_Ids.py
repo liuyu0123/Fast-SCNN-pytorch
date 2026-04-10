@@ -6,6 +6,9 @@ from pathlib import Path
 IMG_DIR   = r"D:\Files\Data\USVInlandDataset\Water Segmentation\training\training\640_320_undistorted"            # 原图目录
 JSON_DIR  = r"D:\Files\Data\USVInlandDataset\Water Segmentation\training\training\640_320_undistorted_json"       # json 目录
 OUTPUT_DIR= r"D:\Files\Data\USVInlandDataset\Water Segmentation\training\training\640_320_undistorted_labelIds2"   # 你想放 mask 的地方
+IMG_DIR    = r"D:\Files\Data_Personal\WelaBoat\WaterSegResize\images"         # 原图目录（用于获取尺寸）
+JSON_DIR   = r"D:\Files\Data_Personal\WelaBoat\WaterSegResize\masks_json"    # JSON 标注目录
+OUTPUT_DIR = r"D:\Files\Data_Personal\WelaBoat\WaterSegResize\masks_Ids"     # 输出掩码目录
 # =======================================
 
 CLS_ID = {'water': 1}   # 0=背景 1=water

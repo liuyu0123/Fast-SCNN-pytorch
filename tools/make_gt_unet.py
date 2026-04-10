@@ -5,6 +5,9 @@ import os
 import glob
 from pathlib import Path
 
+mask_suffix = '_mask'
+mask_suffix = ''
+
 # ========== 配置路径 ==================
 IMG_DIR    = r"D:\Files\Data\USVInlandDataset\Water Segmentation\training\training\640_320_undistorted"         # 原图目录（用于获取尺寸）
 JSON_DIR   = r"D:\Files\Data\USVInlandDataset\Water Segmentation\training\training\640_320_undistorted_json"    # JSON 标注目录
@@ -70,7 +73,7 @@ def convert():
         mask = poly2mask(json_p, H, W)
         
         # 保存为 PNG（无损，支持单通道）
-        mask_name = base + '_mask.png'
+        mask_name = base + mask_suffix + '.png'
         mask_path = os.path.join(OUTPUT_DIR, mask_name)
         cv2.imwrite(mask_path, mask)
         
