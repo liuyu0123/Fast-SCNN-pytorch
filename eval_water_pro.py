@@ -95,7 +95,7 @@ def save_results_to_csv(per_image_metrics, overall_metrics, model_info, args):
         writer.writerow(['Crop Size', args.crop_size])
         writer.writerow([])
         writer.writerow(['Per-Image Results'])
-        writer.writerow(['Image Name', 'Precision', 'Recall', 'F1-Score', 'mIoU', 'Accuracy'])
+        writer.writerow(['Image Name', 'Precision', 'Recall', 'F1-Score', 'mIoU', 'Accuracy', 'Inference Time (ms)', 'FPS'])
         for item in per_image_metrics:
             writer.writerow([
                 item['filename'],
@@ -103,7 +103,9 @@ def save_results_to_csv(per_image_metrics, overall_metrics, model_info, args):
                 f"{item['recall']:.6f}",
                 f"{item['f1']:.6f}",
                 f"{item['miou']:.6f}",
-                f"{item['acc']:.6f}"
+                f"{item['acc']:.6f}",
+                f"{item['inference_time_ms']:.4f}",
+                f"{item['fps']:.2f}"
             ])
         writer.writerow([])
         writer.writerow(['Overall Results'])
@@ -266,7 +268,14 @@ class Evaluator(object):
                         orig_size = (int(orig_size[0].item()), int(orig_size[1].item()))
                     else:
                         orig_size = (int(orig_size[0]), int(orig_size[1]))
-                
+
+                # 第一张图先 warm-up，避免初始化时间计入性能统计
+                if i == 0:
+                    with torch.no_grad():
+                        _ = self.model(image)
+                        if self.args.device.type == 'cuda':
+                            torch.cuda.synchronize()
+
                 if self.args.device.type == 'cuda':
                     torch.cuda.synchronize()
                 batch_start = time.time()
@@ -275,7 +284,7 @@ class Evaluator(object):
                     torch.cuda.synchronize()
                 batch_time = time.time() - batch_start
                 inference_times.append(batch_time)
-                
+
                 pred = torch.argmax(outputs[0], 1)
                 pred_np = pred.cpu().data.numpy()
                 label_np = label.cpu().numpy()
@@ -284,6 +293,7 @@ class Evaluator(object):
                 self.metric.update(pred_np, label_np)
                 metrics = self.metric.get_full_metrics()
                 
+                inference_time_ms = batch_time * 1000
                 per_image_results.append({
                     'filename': filename,
                     'precision': metrics['precision'],
@@ -291,7 +301,8 @@ class Evaluator(object):
                     'f1': metrics['f1'],
                     'miou': metrics['mIoU'],
                     'acc': metrics['pixAcc'],
-                    'inference_time_ms': batch_time * 1000
+                    'inference_time_ms': inference_time_ms,
+                    'fps': 1000.0 / inference_time_ms if inference_time_ms > 0 else 0.0
                 })
                 
                 if self.output_dir:
@@ -300,8 +311,9 @@ class Evaluator(object):
         
         test_time = time.time() - test_start
         avg_inference_time_ms = np.mean(inference_times) * 1000 if inference_times else 0
-        fps = total_images / test_time if test_time > 0 else 0
-        
+        avg_fps = 1000.0 / avg_inference_time_ms if avg_inference_time_ms > 0 else 0.0
+        end_to_end_fps = total_images / test_time if test_time > 0 else 0.0
+
         overall_metrics = {
             'total_images': total_images,
             'precision': np.mean([r['precision'] for r in per_image_results]),
@@ -310,9 +322,9 @@ class Evaluator(object):
             'miou': np.mean([r['miou'] for r in per_image_results]),
             'acc': np.mean([r['acc'] for r in per_image_results]),
             'inference_time_ms': avg_inference_time_ms,
-            'fps': fps
+            'fps': avg_fps
         }
-        
+
         print('\n' + '='*50)
         print('Evaluation Summary')
         print('='*50)
@@ -323,7 +335,8 @@ class Evaluator(object):
         print(f'Average mIoU:      {overall_metrics["miou"]:.6f}')
         print(f'Average Accuracy:  {overall_metrics["acc"]:.6f}')
         print(f'Inference Time:    {avg_inference_time_ms:.4f} ms')
-        print(f'FPS:               {fps:.2f}')
+        print(f'FPS:               {avg_fps:.2f}')
+        print(f'End-to-End FPS:    {end_to_end_fps:.2f}')
         print('='*50)
         
         return per_image_results, overall_metrics
